@@ -7,18 +7,23 @@
     body { font-family: system-ui, sans-serif; margin: 2rem; }
     table { border-collapse: collapse; }
     th, td { border: 1px solid #ccc; padding: 0.3rem 0.8rem; text-align: left; }
+    button { margin-top: 1rem; padding: 0.5rem 1rem; font: inherit; cursor: pointer; }
   </style>
 </head>
 <body>
   <h1>Transactions</h1>
+  <button id="download-csv">Download CSV</button>
   <table id="transactions">
     <thead><tr><th>Date</th><th>Amount</th><th>Currency</th></tr></thead>
     <tbody></tbody>
   </table>
   <script>
+    let transactionsData = [];
+
     fetch("transactions.json")
       .then((r) => r.json())
       .then((rows) => {
+        transactionsData = rows;
         const body = document.querySelector("#transactions tbody");
         for (const row of rows) {
           const tr = document.createElement("tr");
@@ -30,6 +35,20 @@
           body.appendChild(tr);
         }
       });
+
+    document.getElementById("download-csv").addEventListener("click", () => {
+      const csv = ["date,amount,currency"];
+      for (const row of transactionsData) {
+        csv.push(`${row.date},${row.amount},${row.currency}`);
+      }
+      const blob = new Blob([csv.join("\n")], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "transactions.csv";
+      a.click();
+      URL.revokeObjectURL(url);
+    });
   </script>
 </body>
 </html>
