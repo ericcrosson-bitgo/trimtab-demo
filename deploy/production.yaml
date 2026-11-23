@@ -1,0 +1,48 @@
+# "Production" for the demo: serves the default branch's site/ and pulls new
+# commits every 30 seconds, so a merge is live within a minute.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: trimtab-demo
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo
+  namespace: trimtab-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: demo }
+  template:
+    metadata:
+      labels: { app: demo }
+    spec:
+      containers:
+        - name: site
+          image: docker.io/library/node:22-bookworm@sha256:e13726ca604184d7a91fcacab1fc09eefd642dc28e79ac34e85540dd93b78cfb
+          command:
+            - sh
+            - -c
+            - |
+              set -e
+              git clone --depth 1 https://github.com/ericcrosson-bitgo/trimtab-demo /srv/demo
+              ( while sleep 30; do
+                  git -C /srv/demo fetch -q --depth 1 origin HEAD && git -C /srv/demo reset -q --hard FETCH_HEAD
+                done ) &
+              exec python3 -m http.server 8080 --directory /srv/demo/site
+          ports:
+            - containerPort: 8080
+          readinessProbe:
+            httpGet: { path: /, port: 8080 }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: demo
+  namespace: trimtab-demo
+spec:
+  selector: { app: demo }
+  ports:
+    - port: 8080
+      targetPort: 8080
